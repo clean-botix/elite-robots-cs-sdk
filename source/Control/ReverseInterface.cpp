@@ -62,8 +62,7 @@ bool ReverseInterface::stopControl() {
         return false;
     }
 
-    int32_t data[REVERSE_DATA_SIZE];
-    data[0] = 0;
+    int32_t data[REVERSE_DATA_SIZE] = {0};
     data[REVERSE_DATA_SIZE - 1] = htonl((int)ControlMode::MODE_STOPPED);
     
     return write(data, sizeof(data)) > 0;
