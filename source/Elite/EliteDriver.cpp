@@ -45,7 +45,7 @@ public:
     std::string readScriptFile(const std::string& file);
     void scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
                           float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc,
-                          float servoj_start_delta_limit, float payload_mass_max);
+                          float servoj_start_delta_limit_rad, float payload_mass_max_kg);
     std::string robot_script_;
     std::string control_script_;
     std::string robot_ip_;
@@ -87,7 +87,7 @@ static void replaceAll(std::string& text, const std::string& key, const std::str
 
 void EliteDriver::Impl::scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
                                          float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc,
-                                         float servoj_start_delta_limit, float payload_mass_max) {
+                                         float servoj_start_delta_limit_rad, float payload_mass_max_kg) {
     std::ostringstream servoj_replace_str;
     servoj_replace_str << "t = " << servoj_time << ", lookahead_time = " << servoj_lookahead_time << ", gain=" << servoj_gain;
 
@@ -103,8 +103,8 @@ void EliteDriver::Impl::scriptParamWrite(std::string& file_string, int reverse_p
     replaceAll(file_string, TRAJECTORY_DATA_SIZE_REPLACE, std::to_string(TrajectoryInterface::TRAJECTORY_MESSAGE_LEN));
     replaceAll(file_string, SCRIPT_COMMAND_DATA_SIZE_REPLACE, std::to_string(ScriptCommandInterface::SCRIPT_COMMAND_DATA_SIZE));
     replaceAll(file_string, STOP_J_REPLACE, std::to_string(stopj_acc));
-    replaceAll(file_string, SERVOJ_START_DELTA_LIMIT_REPLACE, std::to_string(servoj_start_delta_limit));
-    replaceAll(file_string, PAYLOAD_MASS_MAX_REPLACE, std::to_string(payload_mass_max));
+    replaceAll(file_string, SERVOJ_START_DELTA_LIMIT_REPLACE, std::to_string(servoj_start_delta_limit_rad));
+    replaceAll(file_string, PAYLOAD_MASS_MAX_REPLACE, std::to_string(payload_mass_max_kg));
 }
 
 void EliteDriver::init(const EliteDriverConfig& config) {
@@ -116,7 +116,7 @@ void EliteDriver::init(const EliteDriverConfig& config) {
     impl_->control_script_ = impl_->readScriptFile(config.script_file_path);
     impl_->scriptParamWrite(impl_->control_script_, config.reverse_port, config.trajectory_port, config.script_command_port,
                             config.servoj_time, config.servoj_lookahead_time, config.servoj_gain, config.stopj_acc,
-                            config.servoj_start_delta_limit, config.payload_mass_max);
+                            config.servoj_start_delta_limit_rad, config.payload_mass_max_kg);
 
     impl_->reverse_server_ = std::make_unique<ReverseInterface>(config.reverse_port);
     ELITE_LOG_INFO("Created reverse interface");
