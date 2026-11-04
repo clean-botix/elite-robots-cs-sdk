@@ -73,76 +73,38 @@ std::string EliteDriver::Impl::readScriptFile(const std::string& filepath) {
     return content;
 }
 
+// Replaces every occurrence of key in text with value. The search resumes after
+// each inserted value, so a value that contains key cannot loop forever. An empty
+// key does nothing.
+static void replaceAll(std::string& text, const std::string& key, const std::string& value) {
+    if (key.empty()) {
+        return;
+    }
+    for (size_t pos = text.find(key); pos != std::string::npos; pos = text.find(key, pos + value.length())) {
+        text.replace(pos, key.length(), value);
+    }
+}
+
 void EliteDriver::Impl::scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
                                          float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc,
                                          float servoj_start_delta_limit, float payload_mass_max) {
-    while (file_string.find(SERVER_IP_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SERVER_IP_REPLACE), SERVER_IP_REPLACE.length(), local_ip_);
-    }
-    
-    while (file_string.find(TRAJECTORY_SERVER_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TRAJECTORY_SERVER_PORT_REPLACE), TRAJECTORY_SERVER_PORT_REPLACE.length(),
-                            std::to_string(trajectory_port));
-    }
-    
-    while (file_string.find(REVERSE_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(REVERSE_PORT_REPLACE), REVERSE_PORT_REPLACE.length(), std::to_string(reverse_port));
-    }
-
-    while (file_string.find(SCRIPT_COMMAND_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SCRIPT_COMMAND_PORT_REPLACE), SCRIPT_COMMAND_PORT_REPLACE.length(),
-                            std::to_string(script_command_port));
-    }
-    
     std::ostringstream servoj_replace_str;
     servoj_replace_str << "t = " << servoj_time << ", lookahead_time = " << servoj_lookahead_time << ", gain=" << servoj_gain;
-    while (file_string.find(SERVO_J_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SERVO_J_REPLACE), SERVO_J_REPLACE.length(), servoj_replace_str.str());
-    }
-    
-    while (file_string.find(POS_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(POS_ZOOM_RATIO_REPLACE), POS_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::POS_ZOOM_RATIO));
-    }
-    
-    while (file_string.find(TIME_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TIME_ZOOM_RATIO_REPLACE), TIME_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::TIME_ZOOM_RATIO));
-    }
 
-    while (file_string.find(COMMON_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(COMMON_ZOOM_RATIO_REPLACE), COMMON_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::COMMON_ZOOM_RATIO));
-    }
-
-    while (file_string.find(REVERSE_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(REVERSE_DATA_SIZE_REPLACE), REVERSE_DATA_SIZE_REPLACE.length(),
-                            std::to_string(ReverseInterface::REVERSE_DATA_SIZE));
-    }
-
-    while (file_string.find(TRAJECTORY_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TRAJECTORY_DATA_SIZE_REPLACE), TRAJECTORY_DATA_SIZE_REPLACE.length(),
-                            std::to_string(TrajectoryInterface::TRAJECTORY_MESSAGE_LEN));
-    }
-
-    while (file_string.find(SCRIPT_COMMAND_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SCRIPT_COMMAND_DATA_SIZE_REPLACE), SCRIPT_COMMAND_DATA_SIZE_REPLACE.length(),
-                            std::to_string(ScriptCommandInterface::SCRIPT_COMMAND_DATA_SIZE));
-    }
-
-    while (file_string.find(STOP_J_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(STOP_J_REPLACE), STOP_J_REPLACE.length(), std::to_string(stopj_acc));
-    }
-
-    while (file_string.find(SERVOJ_START_DELTA_LIMIT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SERVOJ_START_DELTA_LIMIT_REPLACE), SERVOJ_START_DELTA_LIMIT_REPLACE.length(),
-                            std::to_string(servoj_start_delta_limit));
-    }
-
-    while (file_string.find(PAYLOAD_MASS_MAX_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(PAYLOAD_MASS_MAX_REPLACE), PAYLOAD_MASS_MAX_REPLACE.length(),
-                            std::to_string(payload_mass_max));
-    }
+    replaceAll(file_string, SERVER_IP_REPLACE, local_ip_);
+    replaceAll(file_string, TRAJECTORY_SERVER_PORT_REPLACE, std::to_string(trajectory_port));
+    replaceAll(file_string, REVERSE_PORT_REPLACE, std::to_string(reverse_port));
+    replaceAll(file_string, SCRIPT_COMMAND_PORT_REPLACE, std::to_string(script_command_port));
+    replaceAll(file_string, SERVO_J_REPLACE, servoj_replace_str.str());
+    replaceAll(file_string, POS_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::POS_ZOOM_RATIO));
+    replaceAll(file_string, TIME_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::TIME_ZOOM_RATIO));
+    replaceAll(file_string, COMMON_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::COMMON_ZOOM_RATIO));
+    replaceAll(file_string, REVERSE_DATA_SIZE_REPLACE, std::to_string(ReverseInterface::REVERSE_DATA_SIZE));
+    replaceAll(file_string, TRAJECTORY_DATA_SIZE_REPLACE, std::to_string(TrajectoryInterface::TRAJECTORY_MESSAGE_LEN));
+    replaceAll(file_string, SCRIPT_COMMAND_DATA_SIZE_REPLACE, std::to_string(ScriptCommandInterface::SCRIPT_COMMAND_DATA_SIZE));
+    replaceAll(file_string, STOP_J_REPLACE, std::to_string(stopj_acc));
+    replaceAll(file_string, SERVOJ_START_DELTA_LIMIT_REPLACE, std::to_string(servoj_start_delta_limit));
+    replaceAll(file_string, PAYLOAD_MASS_MAX_REPLACE, std::to_string(payload_mass_max));
 }
 
 void EliteDriver::init(const EliteDriverConfig& config) {
