@@ -66,6 +66,10 @@ class EliteDriverConfig {
     // The script refuses a payload mass above this value.
     float payload_mass_max_kg = 14.4;
 
+    // The longest silence the script allows while waiting for a forwarded trajectory point.
+    // A longer gap fails a running trajectory and ends the drain of a replaced or cancelled one.
+    float trajectory_point_timeout_s = 1.0;
+
     EliteDriverConfig() = default;
     ~EliteDriverConfig() = default;
 };
