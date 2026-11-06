@@ -59,6 +59,17 @@ class EliteDriverConfig {
     // Acceleration [rad/s^2]. The acceleration of stopj motion.
     float stopj_acc = 4;
 
+    // The script refuses the first servoj target of a servo session if any joint lies
+    // farther than this from the actual position. The default is 5 degrees.
+    float servoj_start_delta_limit_rad = 0.0872665;
+
+    // The script refuses a payload mass above this value.
+    float payload_mass_max_kg = 14.4;
+
+    // The longest silence the script allows while waiting for a forwarded trajectory point.
+    // A longer gap fails a running trajectory and ends the drain of a replaced or cancelled one.
+    float trajectory_point_timeout_s = 1.0;
+
     EliteDriverConfig() = default;
     ~EliteDriverConfig() = default;
 };

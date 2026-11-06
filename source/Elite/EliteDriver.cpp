@@ -28,6 +28,9 @@ static const std::string REVERSE_DATA_SIZE_REPLACE = "{{REVERSE_DATA_SIZE_REPLAC
 static const std::string TRAJECTORY_DATA_SIZE_REPLACE = "{{TRAJECTORY_DATA_SIZE_REPLACE}}";
 static const std::string SCRIPT_COMMAND_DATA_SIZE_REPLACE = "{{SCRIPT_COMMAND_DATA_SIZE_REPLACE}}";
 static const std::string STOP_J_REPLACE = "{{STOP_J_REPLACE}}";
+static const std::string SERVOJ_START_DELTA_LIMIT_REPLACE = "{{SERVOJ_START_DELTA_LIMIT_REPLACE}}";
+static const std::string PAYLOAD_MASS_MAX_REPLACE = "{{PAYLOAD_MASS_MAX_REPLACE}}";
+static const std::string TRAJECTORY_POINT_TIMEOUT_REPLACE = "{{TRAJECTORY_POINT_TIMEOUT_REPLACE}}";
 
 class EliteDriver::Impl {
 public:
@@ -42,7 +45,9 @@ public:
 
     std::string readScriptFile(const std::string& file);
     void scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
-                          float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc);
+                          float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc,
+                          float servoj_start_delta_limit_rad, float payload_mass_max_kg,
+                          float trajectory_point_timeout_s);
     std::string robot_script_;
     std::string control_script_;
     std::string robot_ip_;
@@ -70,65 +75,40 @@ std::string EliteDriver::Impl::readScriptFile(const std::string& filepath) {
     return content;
 }
 
-void EliteDriver::Impl::scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
-                                         float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc) {
-    while (file_string.find(SERVER_IP_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SERVER_IP_REPLACE), SERVER_IP_REPLACE.length(), local_ip_);
+// Replaces every occurrence of key in text with value. The search resumes after
+// each inserted value, so a value that contains key cannot loop forever. An empty
+// key does nothing.
+static void replaceAll(std::string& text, const std::string& key, const std::string& value) {
+    if (key.empty()) {
+        return;
     }
-    
-    while (file_string.find(TRAJECTORY_SERVER_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TRAJECTORY_SERVER_PORT_REPLACE), TRAJECTORY_SERVER_PORT_REPLACE.length(),
-                            std::to_string(trajectory_port));
+    for (size_t pos = text.find(key); pos != std::string::npos; pos = text.find(key, pos + value.length())) {
+        text.replace(pos, key.length(), value);
     }
-    
-    while (file_string.find(REVERSE_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(REVERSE_PORT_REPLACE), REVERSE_PORT_REPLACE.length(), std::to_string(reverse_port));
-    }
+}
 
-    while (file_string.find(SCRIPT_COMMAND_PORT_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SCRIPT_COMMAND_PORT_REPLACE), SCRIPT_COMMAND_PORT_REPLACE.length(),
-                            std::to_string(script_command_port));
-    }
-    
+void EliteDriver::Impl::scriptParamWrite(std::string& file_string, int reverse_port, int trajectory_port, int script_command_port,
+                                         float servoj_time, float servoj_lookahead_time, int servoj_gain, float stopj_acc,
+                                         float servoj_start_delta_limit_rad, float payload_mass_max_kg,
+                                         float trajectory_point_timeout_s) {
     std::ostringstream servoj_replace_str;
     servoj_replace_str << "t = " << servoj_time << ", lookahead_time = " << servoj_lookahead_time << ", gain=" << servoj_gain;
-    while (file_string.find(SERVO_J_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SERVO_J_REPLACE), SERVO_J_REPLACE.length(), servoj_replace_str.str());
-    }
-    
-    while (file_string.find(POS_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(POS_ZOOM_RATIO_REPLACE), POS_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::POS_ZOOM_RATIO));
-    }
-    
-    while (file_string.find(TIME_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TIME_ZOOM_RATIO_REPLACE), TIME_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::TIME_ZOOM_RATIO));
-    }
 
-    while (file_string.find(COMMON_ZOOM_RATIO_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(COMMON_ZOOM_RATIO_REPLACE), COMMON_ZOOM_RATIO_REPLACE.length(),
-                            std::to_string(CONTROL::COMMON_ZOOM_RATIO));
-    }
-
-    while (file_string.find(REVERSE_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(REVERSE_DATA_SIZE_REPLACE), REVERSE_DATA_SIZE_REPLACE.length(),
-                            std::to_string(ReverseInterface::REVERSE_DATA_SIZE));
-    }
-
-    while (file_string.find(TRAJECTORY_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(TRAJECTORY_DATA_SIZE_REPLACE), TRAJECTORY_DATA_SIZE_REPLACE.length(),
-                            std::to_string(TrajectoryInterface::TRAJECTORY_MESSAGE_LEN));
-    }
-
-    while (file_string.find(SCRIPT_COMMAND_DATA_SIZE_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(SCRIPT_COMMAND_DATA_SIZE_REPLACE), SCRIPT_COMMAND_DATA_SIZE_REPLACE.length(),
-                            std::to_string(ScriptCommandInterface::SCRIPT_COMMAND_DATA_SIZE));
-    }
-
-    while (file_string.find(STOP_J_REPLACE) != std::string::npos) {
-        file_string.replace(file_string.find(STOP_J_REPLACE), STOP_J_REPLACE.length(), std::to_string(stopj_acc));
-    }
+    replaceAll(file_string, SERVER_IP_REPLACE, local_ip_);
+    replaceAll(file_string, TRAJECTORY_SERVER_PORT_REPLACE, std::to_string(trajectory_port));
+    replaceAll(file_string, REVERSE_PORT_REPLACE, std::to_string(reverse_port));
+    replaceAll(file_string, SCRIPT_COMMAND_PORT_REPLACE, std::to_string(script_command_port));
+    replaceAll(file_string, SERVO_J_REPLACE, servoj_replace_str.str());
+    replaceAll(file_string, POS_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::POS_ZOOM_RATIO));
+    replaceAll(file_string, TIME_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::TIME_ZOOM_RATIO));
+    replaceAll(file_string, COMMON_ZOOM_RATIO_REPLACE, std::to_string(CONTROL::COMMON_ZOOM_RATIO));
+    replaceAll(file_string, REVERSE_DATA_SIZE_REPLACE, std::to_string(ReverseInterface::REVERSE_DATA_SIZE));
+    replaceAll(file_string, TRAJECTORY_DATA_SIZE_REPLACE, std::to_string(TrajectoryInterface::TRAJECTORY_MESSAGE_LEN));
+    replaceAll(file_string, SCRIPT_COMMAND_DATA_SIZE_REPLACE, std::to_string(ScriptCommandInterface::SCRIPT_COMMAND_DATA_SIZE));
+    replaceAll(file_string, STOP_J_REPLACE, std::to_string(stopj_acc));
+    replaceAll(file_string, SERVOJ_START_DELTA_LIMIT_REPLACE, std::to_string(servoj_start_delta_limit_rad));
+    replaceAll(file_string, PAYLOAD_MASS_MAX_REPLACE, std::to_string(payload_mass_max_kg));
+    replaceAll(file_string, TRAJECTORY_POINT_TIMEOUT_REPLACE, std::to_string(trajectory_point_timeout_s));
 }
 
 void EliteDriver::init(const EliteDriverConfig& config) {
@@ -139,7 +119,9 @@ void EliteDriver::init(const EliteDriverConfig& config) {
     // Generate external control script.
     impl_->control_script_ = impl_->readScriptFile(config.script_file_path);
     impl_->scriptParamWrite(impl_->control_script_, config.reverse_port, config.trajectory_port, config.script_command_port,
-                            config.servoj_time, config.servoj_lookahead_time, config.servoj_gain, config.stopj_acc);
+                            config.servoj_time, config.servoj_lookahead_time, config.servoj_gain, config.stopj_acc,
+                            config.servoj_start_delta_limit_rad, config.payload_mass_max_kg,
+                            config.trajectory_point_timeout_s);
 
     impl_->reverse_server_ = std::make_unique<ReverseInterface>(config.reverse_port);
     ELITE_LOG_INFO("Created reverse interface");
